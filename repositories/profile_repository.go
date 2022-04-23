@@ -29,7 +29,7 @@ func (r *ProfileRepository) Create(ctx context.Context, profile *models.Profile)
 		profile.Email,
 		"empty",
 		profile.Gender,
-		"empty",
+		profile.NationalityId,
 		"1900-01-01",
 		time.Now().UTC(),
 		time.Now().UTC())

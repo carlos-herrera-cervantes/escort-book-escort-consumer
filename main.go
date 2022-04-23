@@ -31,6 +31,9 @@ func main() {
 		ProfileStatusCategoryRepository: &repositories.ProfileStatusCategoryRepository{
 			Data: db.New(),
 		},
+		NationalityRepository: &repositories.NationalityRepository{
+			Data: db.New(),
+		},
 	}
 
 	for run == true {
