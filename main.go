@@ -17,9 +17,13 @@ func main() {
 		"bootstrap.servers": os.Getenv("KAFKA_SERVERS"),
 		"group.id":          os.Getenv("KAFKA_GROUP_ID"),
 		"auto.offset.reset": "smallest",
+		"enable.auto.commit": true,
 	})
 
-	consumer.Subscribe(os.Getenv("KAFKA_ESCORT_TOPIC"), nil)
+	_ = consumer.SubscribeTopics(
+		[]string{os.Getenv("KAFKA_ESCORT_TOPIC"), os.Getenv("KAFKA_ACTIVE_ACCOUNT_TOPIC")},
+		nil,
+	)
 	run := true
 	handler := &handlers.EscortHandler{
 		ProfileRepository: &repositories.ProfileRepository{
@@ -52,5 +56,5 @@ func main() {
 		}
 	}
 
-	consumer.Close()
+	_ = consumer.Close()
 }
