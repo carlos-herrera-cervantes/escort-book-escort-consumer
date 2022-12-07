@@ -1,0 +1,22 @@
+version: '3'
+services:
+  postgres:
+    image: 'postgres:14.6'
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+  test:
+    build:
+      context: .
+      dockerfile: dockerfile.testing
+    volumes:
+      - data:/app
+    working_dir: /app
+    user: ${MY_USER:-root}
+    depends_on:
+      - postgres
+    command: 'bash ./test.sh'
+volumes:
+  data:

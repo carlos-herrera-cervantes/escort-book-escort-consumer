@@ -3,13 +3,15 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+
+	"escort-book-escort-consumer/config"
 	"escort-book-escort-consumer/models"
 	"escort-book-escort-consumer/repositories"
 	"escort-book-escort-consumer/types"
-	"log"
-	"os"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
+	log "github.com/inconshreveable/log15"
 )
 
 type EscortHandler struct {
@@ -19,10 +21,12 @@ type EscortHandler struct {
 	NationalityRepository           repositories.INationalityRepository
 }
 
-func (h *EscortHandler) ProcessMessage(ctx context.Context, message *kafka.Message) {
+var logger = log.New("handlers")
+
+func (h *EscortHandler) HandleEvent(ctx context.Context, message *kafka.Message) {
 	topic := message.TopicPartition.Topic
 
-	if *(topic) == os.Getenv("KAFKA_ACTIVE_ACCOUNT_TOPIC") {
+	if *(topic) == config.InitializeKafka().Topics.UserActiveAccount {
 		h.activeProfile(ctx, message)
 		return
 	}
@@ -40,13 +44,14 @@ func (h *EscortHandler) activeProfile(ctx context.Context, message *kafka.Messag
 		ctx,
 		activeAccountEvent.UserId,
 	); err != nil {
+		logger.Error(fmt.Sprintf("ERROR GETTING PROFILE STATUS: %s", err.Error()))
 		return
 	}
 
 	category, err := h.ProfileStatusCategoryRepository.GetOneByName(ctx, "Active")
 
 	if err != nil {
-		log.Println("ERROR GETTING THE CATEGORY: ", err.Error())
+		logger.Error(fmt.Sprintf("ERROR GETTING THE CATEGORY: %s", err.Error()))
 		return
 	}
 
@@ -55,7 +60,7 @@ func (h *EscortHandler) activeProfile(ctx context.Context, message *kafka.Messag
 		activeAccountEvent.UserId,
 		category.Id,
 	); err != nil {
-		log.Println("ERROR UPDATING THE PROFILE STATUS: ", err.Error())
+		logger.Error(fmt.Sprintf("ERROR UPDATING THE PROFILE STATUS: %s", err.Error()))
 	}
 }
 
@@ -69,22 +74,21 @@ func (h *EscortHandler) createProfile(ctx context.Context, message *kafka.Messag
 	nationality, err := h.NationalityRepository.GetOneByName(ctx, "empty")
 
 	if err != nil {
-		log.Println("ERROR GETTING THE NATIONALITY: ", err.Error())
+		logger.Error(fmt.Sprintf("ERROR GETTING THE NATIONALITY: %s", err.Error()))
 		return
 	}
 
 	profile.NationalityId = nationality.Id
-	err = h.ProfileRepository.Create(ctx, &profile)
 
-	if err != nil {
-		log.Println("ERROR INSERTING THE PROFILE: ", err.Error())
+	if err = h.ProfileRepository.Create(ctx, &profile); err != nil {
+		logger.Error(fmt.Sprintf("ERROR INSERTING THE PROFILE: %s", err.Error()))
 		return
 	}
 
 	status, err := h.ProfileStatusCategoryRepository.GetOneByName(ctx, "In Review")
 
 	if err != nil {
-		log.Println("ERROR GETTING THE PROFILE STATUS: ", err.Error())
+		logger.Error(fmt.Sprintf("ERROR GETTING THE PROFILE STATUS: %s", err.Error()))
 		return
 	}
 
@@ -93,9 +97,8 @@ func (h *EscortHandler) createProfile(ctx context.Context, message *kafka.Messag
 		ProfileStatusCategoryId: status.Id,
 	}
 	profileStatus.SetDefaultValues()
-	err = h.ProfileStatusRepository.Create(ctx, &profileStatus)
 
-	if err != nil {
-		log.Println("ERROR INSERTING THE PROFILE STATUS: ", err.Error())
+	if err = h.ProfileStatusRepository.Create(ctx, &profileStatus); err != nil {
+		logger.Error(fmt.Sprintf("ERROR INSERTING THE PROFILE STATUS: %s", err.Error()))
 	}
 }
