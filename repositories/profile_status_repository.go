@@ -2,11 +2,13 @@ package repositories
 
 import (
 	"context"
+	"time"
+
 	"escort-book-escort-consumer/db"
 	"escort-book-escort-consumer/models"
-	"time"
 )
 
+//go:generate mockgen -destination=./mocks/iprofile_status_repository.go -package=mocks --build_flags=--mod=mod . IProfileStatusRepository
 type IProfileStatusRepository interface {
 	GetByProfileId(ctx context.Context, profileId string) (models.ProfileStatus, error)
 	Create(ctx context.Context, profileStatus *models.ProfileStatus) error
@@ -14,7 +16,7 @@ type IProfileStatusRepository interface {
 }
 
 type ProfileStatusRepository struct {
-	Data *db.Data
+	Data *db.PostgresClient
 }
 
 func (r *ProfileStatusRepository) GetByProfileId(
@@ -22,7 +24,7 @@ func (r *ProfileStatusRepository) GetByProfileId(
 	profileId string,
 ) (profileStatus models.ProfileStatus, err error) {
 	query := "SELECT * FROM profile_status WHERE escort_id = $1;"
-	row := r.Data.DB.QueryRowContext(ctx, query, profileId)
+	row := r.Data.EscortProfileDB.QueryRowContext(ctx, query, profileId)
 
 	if err = row.Scan(
 		&profileStatus.Id,
@@ -41,7 +43,7 @@ func (r *ProfileStatusRepository) Create(ctx context.Context, profileStatus *mod
 	query := "INSERT INTO profile_status VALUES ($1, $2, $3, $4, $5);"
 	profileStatus.SetDefaultValues()
 
-	_, err := r.Data.DB.ExecContext(
+	_, err := r.Data.EscortProfileDB.ExecContext(
 		ctx,
 		query,
 		profileStatus.Id,
@@ -51,7 +53,7 @@ func (r *ProfileStatusRepository) Create(ctx context.Context, profileStatus *mod
 		time.Now().UTC())
 
 	if err != nil {
-		return nil
+		return err
 	}
 
 	return nil
@@ -66,7 +68,7 @@ func (r *ProfileStatusRepository) UpdateByProfileId(
 			  SET profile_status_category_id = $1, updated_at = $2
 			  WHERE escort_id = $3;`
 
-	_, err := r.Data.DB.ExecContext(ctx, query, profileStatusCategoryId, time.Now().UTC(), profileId)
+	_, err := r.Data.EscortProfileDB.ExecContext(ctx, query, profileStatusCategoryId, time.Now().UTC(), profileId)
 
 	if err != nil {
 		return err
